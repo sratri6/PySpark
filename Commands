@@ -1,0 +1,176 @@
+# 🚀 Apache Spark / PySpark Cheat Sheet
+
+> 📚 A quick reference for the most commonly used Apache Spark & PySpark commands used in **Data Engineering**, **Big Data**, and **Interview Preparation**.
+
+## 🏗️ Spark Session
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `SparkSession.builder.getOrCreate()` | `spark = SparkSession.builder.appName("App").getOrCreate()` | Creates and initializes a Spark application. |
+
+---
+
+## 📂 Reading Data
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `read.csv()` | `spark.read.csv(path)` | Reads CSV files into a DataFrame. |
+| `read.parquet()` | `spark.read.parquet(path)` | Reads Parquet files into a DataFrame. |
+| `read.json()` | `spark.read.json(path)` | Reads JSON files into a DataFrame. |
+| `read.orc()` | `spark.read.orc(path)` | Reads ORC files into a DataFrame. |
+
+---
+
+## 👀 Exploring Data
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `show()` | `df.show()` | Displays the first 20 rows. |
+| `printSchema()` | `df.printSchema()` | Displays DataFrame schema. |
+| `columns` | `df.columns` | Returns all column names. |
+| `count()` | `df.count()` | Returns total number of records. |
+| `describe()` | `df.describe()` | Displays summary statistics. |
+| `limit()` | `df.limit(10)` | Returns the first *n* rows. |
+
+---
+
+## 🎯 Selecting & Filtering
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `select()` | `df.select("Name","Salary")` | Selects required columns. |
+| `selectExpr()` | `df.selectExpr("Salary*12 AS AnnualSalary")` | Selects using SQL expressions. |
+| `filter()` | `df.filter(df.Salary > 50000)` | Filters rows based on conditions. |
+| `where()` | `df.where("Salary > 50000")` | SQL-style filtering. |
+
+---
+
+## ✨ Column Operations
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `withColumn()` | `df.withColumn("Bonus", col("Salary")*0.1)` | Adds or modifies a column. |
+| `withColumnRenamed()` | `df.withColumnRenamed("Salary","MonthlySalary")` | Renames a column. |
+| `drop()` | `df.drop("Age")` | Removes columns. |
+| `cast()` | `col("Salary").cast("int")` | Converts data type. |
+| `alias()` | `col("Salary").alias("MonthlySalary")` | Creates an alias. |
+
+---
+
+## 🔍 Sorting & Removing Duplicates
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `orderBy()` | `df.orderBy("Salary")` | Sorts ascending. |
+| `sort()` | `df.sort(df.Salary.desc())` | Sorts ascending/descending. |
+| `distinct()` | `df.distinct()` | Removes duplicate rows. |
+| `dropDuplicates()` | `df.dropDuplicates()` | Removes duplicate rows based on columns. |
+
+---
+
+## 📊 Aggregations
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `groupBy()` | `df.groupBy("Department")` | Groups records. |
+| `agg()` | `df.groupBy("Department").agg(sum("Salary"))` | Performs aggregation. |
+| `sum()` | `sum("Salary")` | Calculates total. |
+| `avg()` | `avg("Salary")` | Calculates average. |
+| `min()` | `min("Salary")` | Returns minimum value. |
+| `max()` | `max("Salary")` | Returns maximum value. |
+
+---
+
+## 🔗 Joining Data
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `join()` | `df1.join(df2,"EmpID","inner")` | Joins two DataFrames. |
+| `union()` | `df1.union(df2)` | Combines rows. |
+| `unionByName()` | `df1.unionByName(df2)` | Combines rows by matching column names. |
+
+---
+
+## ⚡ Performance Optimization
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `cache()` | `df.cache()` | Stores data in memory. |
+| `persist()` | `df.persist()` | Stores data using a storage level. |
+| `unpersist()` | `df.unpersist()` | Removes cached data. |
+| `repartition()` | `df.repartition(10)` | Redistributes partitions. |
+| `coalesce()` | `df.coalesce(2)` | Reduces partitions efficiently. |
+| `checkpoint()` | `df.checkpoint()` | Breaks lineage for fault tolerance. |
+| `explain()` | `df.explain()` | Displays execution plan. |
+
+---
+
+## 🗄️ SQL Operations
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `createOrReplaceTempView()` | `df.createOrReplaceTempView("Employee")` | Creates a temporary SQL view. |
+| `spark.sql()` | `spark.sql("SELECT * FROM Employee")` | Executes SQL queries. |
+
+---
+
+## 💾 Writing Data
+
+| 🛠️ Command | 💻 Syntax | 📖 Definition |
+|------------|-----------|---------------|
+| `write.csv()` | `df.write.csv(path)` | Writes CSV files. |
+| `write.parquet()` | `df.write.parquet(path)` | Writes Parquet files. |
+| `write.json()` | `df.write.json(path)` | Writes JSON files. |
+| `write.mode()` | `df.write.mode("overwrite")` | Sets write mode. |
+
+---
+
+## 🧰 Frequently Used Functions
+
+| 🛠️ Function | 📖 Purpose |
+|-------------|-----------|
+| `col()` | References a column. |
+| `lit()` | Creates a constant value. |
+| `when()` | Conditional logic (CASE WHEN). |
+| `concat()` | Concatenates strings. |
+| `upper()` | Converts text to uppercase. |
+| `lower()` | Converts text to lowercase. |
+| `trim()` | Removes leading/trailing spaces. |
+| `substring()` | Extracts part of a string. |
+| `split()` | Splits a string into an array. |
+| `explode()` | Converts array elements into rows. |
+| `regexp_replace()` | Replaces text using regex. |
+| `current_date()` | Returns today's date. |
+| `current_timestamp()` | Returns current timestamp. |
+| `datediff()` | Returns difference between dates. |
+| `year()` | Extracts year. |
+| `month()` | Extracts month. |
+| `dayofmonth()` | Extracts day of month. |
+
+---
+
+## 💡 Best Practices
+
+✅ Prefer **Parquet** over CSV for analytics workloads.
+
+✅ Use **DataFrame APIs** instead of RDDs whenever possible.
+
+✅ Cache only DataFrames that are reused multiple times.
+
+✅ Avoid using `collect()` on large datasets.
+
+✅ Use `repartition()` to increase partitions and `coalesce()` to reduce them.
+
+✅ Use `explain()` to understand query execution plans.
+
+---
+
+## ⭐ If this repository helped you...
+
+🌟 Star this repository
+
+🍴 Fork it
+
+🤝 Share it with fellow Data Engineers
+
+📢 Happy Learning!
