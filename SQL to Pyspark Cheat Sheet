@@ -1,0 +1,874 @@
+# SQL to PySpark Cheat Sheet
+
+A practical quick-reference guide for **SQL developers learning PySpark DataFrame API**.
+
+> **Tip:** PySpark DataFrames are similar to SQL tables, but transformations are chained together using methods such as `.select()`, `.filter()`, `.groupBy()`, `.agg()`, and `.join()`.
+
+---
+
+## 1. Select Data
+
+| Category           | SQL                                       | PySpark                                       |
+| ------------------ | ----------------------------------------- | --------------------------------------------- |
+| Select all columns | `SELECT * FROM customers`                 | `df.select("*")`                              |
+| Select columns     | `SELECT customer_id, name FROM customers` | `df.select("customer_id", "name")`            |
+| Select one column  | `SELECT name FROM customers`              | `df.select("name")`                           |
+| Select distinct    | `SELECT DISTINCT region FROM customers`   | `df.select("region").distinct()`              |
+| Rename column      | `SELECT customer_id AS id FROM customers` | `df.select(F.col("customer_id").alias("id"))` |
+| Remove columns     | `SELECT customer_id, name FROM customers` | `df.select("customer_id", "name")`            |
+| Drop column        | N/A                                       | `df.drop("region")`                           |
+
+---
+
+## 2. Filtering
+
+| Category     | SQL                                    | PySpark                                                             |
+| ------------ | -------------------------------------- | ------------------------------------------------------------------- |
+| Basic filter | `WHERE age > 30`                       | `df.filter(F.col("age") > 30)`                                      |
+| Equal        | `WHERE region = 'UK'`                  | `df.filter(F.col("region") == "UK")`                                |
+| Not equal    | `WHERE status <> 'Inactive'`           | `df.filter(F.col("status") != "Inactive")`                          |
+| AND          | `WHERE age > 30 AND region = 'UK'`     | `df.filter((F.col("age") > 30) & (F.col("region") == "UK"))`        |
+| OR           | `WHERE region = 'UK' OR region = 'US'` | `df.filter((F.col("region") == "UK") \| (F.col("region") == "US"))` |
+| NOT          | `WHERE NOT active`                     | `df.filter(~F.col("active"))`                                       |
+| NULL         | `WHERE region IS NULL`                 | `df.filter(F.col("region").isNull())`                               |
+| NOT NULL     | `WHERE region IS NOT NULL`             | `df.filter(F.col("region").isNotNull())`                            |
+| IN           | `WHERE region IN ('UK','US')`          | `df.filter(F.col("region").isin("UK", "US"))`                       |
+| BETWEEN      | `WHERE age BETWEEN 20 AND 40`          | `df.filter(F.col("age").between(20, 40))`                           |
+
+---
+
+## 3. Sorting
+
+| Category         | SQL                            | PySpark                                        |
+| ---------------- | ------------------------------ | ---------------------------------------------- |
+| Ascending        | `ORDER BY salary ASC`          | `df.orderBy(F.col("salary").asc())`            |
+| Descending       | `ORDER BY salary DESC`         | `df.orderBy(F.col("salary").desc())`           |
+| Multiple columns | `ORDER BY region, salary DESC` | `df.orderBy("region", F.col("salary").desc())` |
+| Limit rows       | `SELECT TOP 100 *`             | `df.limit(100)`                                |
+
+---
+
+## 4. Aggregation
+
+| Category         | SQL                            | PySpark                          |
+| ---------------- | ------------------------------ | -------------------------------- |
+| COUNT            | `COUNT(*)`                     | `F.count("*")`                   |
+| COUNT column     | `COUNT(customer_id)`           | `F.count("customer_id")`         |
+| COUNT DISTINCT   | `COUNT(DISTINCT customer_id)`  | `F.countDistinct("customer_id")` |
+| SUM              | `SUM(amount)`                  | `F.sum("amount")`                |
+| AVG              | `AVG(amount)`                  | `F.avg("amount")`                |
+| MIN              | `MIN(amount)`                  | `F.min("amount")`                |
+| MAX              | `MAX(amount)`                  | `F.max("amount")`                |
+| GROUP BY         | `GROUP BY region`              | `df.groupBy("region")`           |
+| GROUP BY + COUNT | `GROUP BY region` + `COUNT(*)` | `df.groupBy("region").count()`   |
+
+### Example
+
+**SQL**
+
+```sql
+SELECT
+    region,
+    COUNT(*) AS total_customers,
+    AVG(income) AS avg_income
+FROM customers
+GROUP BY region;
+```
+
+**PySpark**
+
+```python
+from pyspark.sql import functions as F
+
+df.groupBy("region").agg(
+    F.count("*").alias("total_customers"),
+    F.avg("income").alias("avg_income")
+)
+```
+
+---
+
+## 5. GROUP BY + HAVING
+
+| Category | SQL                     | PySpark                         |
+| -------- | ----------------------- | ------------------------------- |
+| HAVING   | `HAVING COUNT(*) > 100` | `.filter(F.col("count") > 100)` |
+
+### SQL
+
+```sql
+SELECT
+    region,
+    COUNT(*) AS customer_count
+FROM customers
+GROUP BY region
+HAVING COUNT(*) > 100;
+```
+
+### PySpark
+
+```python
+df.groupBy("region") \
+  .agg(
+      F.count("*").alias("customer_count")
+  ) \
+  .filter(F.col("customer_count") > 100)
+```
+
+---
+
+# 6. Calculated Columns
+
+| Category              | SQL                                   | PySpark                                                        |
+| --------------------- | ------------------------------------- | -------------------------------------------------------------- |
+| Calculated column     | `SELECT salary * 12 AS annual_salary` | `df.withColumn("annual_salary", F.col("salary") * 12)`         |
+| Multiple calculations | `SELECT quantity * price AS revenue`  | `df.withColumn("revenue", F.col("quantity") * F.col("price"))` |
+| Rename                | `AS new_name`                         | `.alias("new_name")`                                           |
+
+### Example
+
+```python
+df = df.withColumn(
+    "revenue",
+    F.col("quantity") * F.col("unit_price")
+)
+```
+
+---
+
+# 7. CASE WHEN
+
+### SQL
+
+```sql
+SELECT
+    customer_id,
+    CASE
+        WHEN total_spend > 10000 THEN 'High'
+        WHEN total_spend > 5000 THEN 'Medium'
+        ELSE 'Low'
+    END AS customer_segment
+FROM customers;
+```
+
+### PySpark
+
+```python
+df = df.withColumn(
+    "customer_segment",
+    F.when(F.col("total_spend") > 10000, "High")
+     .when(F.col("total_spend") > 5000, "Medium")
+     .otherwise("Low")
+)
+```
+
+### Quick Mapping
+
+| SQL         | PySpark        |
+| ----------- | -------------- |
+| `CASE WHEN` | `F.when()`     |
+| `ELSE`      | `.otherwise()` |
+
+---
+
+# 8. String Functions
+
+| Requirement                | SQL                        | PySpark                              |
+| -------------------------- | -------------------------- | ------------------------------------ |
+| Uppercase                  | `UPPER(name)`              | `F.upper("name")`                    |
+| Lowercase                  | `LOWER(name)`              | `F.lower("name")`                    |
+| Length                     | `LEN(name)`                | `F.length("name")`                   |
+| Trim                       | `LTRIM/RTRIM(name)`        | `F.trim("name")`                     |
+| Concatenate                | `CONCAT(first, last)`      | `F.concat("first", "last")`          |
+| Concatenate with separator | `CONCAT(first, ' ', last)` | `F.concat_ws(" ", "first", "last")`  |
+| Substring                  | `SUBSTRING(name, 1, 5)`    | `F.substring("name", 1, 5)`          |
+| Replace                    | `REPLACE(name, 'A', 'B')`  | `F.regexp_replace("name", "A", "B")` |
+| Contains                   | `LIKE '%abc%'`             | `F.col("name").contains("abc")`      |
+| Starts with                | `LIKE 'ABC%'`              | `F.col("name").startswith("ABC")`    |
+| Ends with                  | `LIKE '%ABC'`              | `F.col("name").endswith("ABC")`      |
+
+---
+
+# 9. Date Functions
+
+| Requirement          | SQL                          | PySpark                        |
+| -------------------- | ---------------------------- | ------------------------------ |
+| Current date         | `GETDATE()` / `CURRENT_DATE` | `F.current_date()`             |
+| Current timestamp    | `GETDATE()`                  | `F.current_timestamp()`        |
+| Add days             | `DATEADD(DAY, 7, date)`      | `F.date_add("date", 7)`        |
+| Subtract days        | `DATEADD(DAY, -7, date)`     | `F.date_sub("date", 7)`        |
+| Difference           | `DATEDIFF(end, start)`       | `F.datediff("end", "start")`   |
+| Extract year         | `YEAR(date)`                 | `F.year("date")`               |
+| Extract month        | `MONTH(date)`                | `F.month("date")`              |
+| Extract day          | `DAY(date)`                  | `F.day("date")`                |
+| Format date          | `FORMAT(date, ...)`          | `F.date_format("date", "...")` |
+| Convert to date      | `CAST(date AS DATE)`         | `F.to_date("date")`            |
+| Convert to timestamp | `CAST(date AS TIMESTAMP)`    | `F.to_timestamp("date")`       |
+
+### Example
+
+```python
+df = df.withColumn(
+    "days_since_policy_start",
+    F.datediff(
+        F.current_date(),
+        F.col("policy_start_date")
+    )
+)
+```
+
+---
+
+# 10. Joins
+
+| SQL          | PySpark                          |
+| ------------ | -------------------------------- |
+| `INNER JOIN` | `.join(df2, condition, "inner")` |
+| `LEFT JOIN`  | `.join(df2, condition, "left")`  |
+| `RIGHT JOIN` | `.join(df2, condition, "right")` |
+| `FULL JOIN`  | `.join(df2, condition, "full")   |
+| `CROSS JOIN` | `.crossJoin(df2)`                |
+
+### SQL
+
+```sql
+SELECT
+    c.customer_id,
+    c.name,
+    o.order_id,
+    o.amount
+FROM customers c
+INNER JOIN orders o
+    ON c.customer_id = o.customer_id;
+```
+
+### PySpark
+
+```python
+result = customers.join(
+    orders,
+    customers.customer_id == orders.customer_id,
+    "inner"
+).select(
+    customers.customer_id,
+    customers.name,
+    orders.order_id,
+    orders.amount
+)
+```
+
+---
+
+# 11. Union
+
+### SQL
+
+```sql
+SELECT * FROM customers_2025
+UNION ALL
+SELECT * FROM customers_2026;
+```
+
+### PySpark
+
+```python
+result = customers_2025.unionByName(
+    customers_2026
+)
+```
+
+> Prefer `unionByName()` when column names matter.
+
+---
+
+# 12. DISTINCT
+
+### SQL
+
+```sql
+SELECT DISTINCT region
+FROM customers;
+```
+
+### PySpark
+
+```python
+df.select("region").distinct()
+```
+
+---
+
+# 13. NULL Handling
+
+| SQL                 | PySpark                                 |
+| ------------------- | --------------------------------------- |
+| `IS NULL`           | `.isNull()`                             |
+| `IS NOT NULL`       | `.isNotNull()`                          |
+| `COALESCE(a,b)`     | `F.coalesce("a", "b")`                  |
+| `ISNULL(column, 0)` | `F.coalesce(F.col("column"), F.lit(0))` |
+| Replace null        | `.fillna(0)`                            |
+| Drop null rows      | `.dropna()`                             |
+
+### Example
+
+```python
+df = df.withColumn(
+    "premium",
+    F.coalesce(
+        F.col("premium"),
+        F.lit(0)
+    )
+)
+```
+
+---
+
+# 14. Window Functions
+
+This is one of the **most important PySpark concepts for SQL developers**.
+
+### ROW_NUMBER()
+
+**SQL**
+
+```sql
+SELECT *,
+       ROW_NUMBER() OVER (
+           PARTITION BY customer_id
+           ORDER BY order_date DESC
+       ) AS rn
+FROM orders;
+```
+
+**PySpark**
+
+```python
+from pyspark.sql.window import Window
+
+window = Window.partitionBy(
+    "customer_id"
+).orderBy(
+    F.col("order_date").desc()
+)
+
+df = df.withColumn(
+    "rn",
+    F.row_number().over(window)
+)
+```
+
+---
+
+### RANK()
+
+**SQL**
+
+```sql
+RANK() OVER (
+    PARTITION BY region
+    ORDER BY sales DESC
+)
+```
+
+**PySpark**
+
+```python
+window = Window.partitionBy(
+    "region"
+).orderBy(
+    F.col("sales").desc()
+)
+
+df.withColumn(
+    "rank",
+    F.rank().over(window)
+)
+```
+
+---
+
+### Running total
+
+**SQL**
+
+```sql
+SUM(amount) OVER (
+    PARTITION BY customer_id
+    ORDER BY order_date
+)
+```
+
+**PySpark**
+
+```python
+window = Window.partitionBy(
+    "customer_id"
+).orderBy(
+    "order_date"
+).rowsBetween(
+    Window.unboundedPreceding,
+    Window.currentRow
+)
+
+df.withColumn(
+    "running_total",
+    F.sum("amount").over(window)
+)
+```
+
+---
+
+# 15. Read Data
+
+| Source  | SQL                       | PySpark                                                 |
+| ------- | ------------------------- | ------------------------------------------------------- |
+| CSV     | `SELECT * FROM CSV...`    | `spark.read.csv("path", header=True, inferSchema=True)` |
+| JSON    | `SELECT * FROM JSON...`   | `spark.read.json("path")`                               |
+| Parquet | `SELECT * FROM ...`       | `spark.read.parquet("path")`                            |
+| Delta   | `SELECT * FROM table`     | `spark.read.format("delta").table("table")`             |
+| Table   | `SELECT * FROM customers` | `spark.table("customers")`                              |
+
+### CSV
+
+```python
+df = spark.read.csv(
+    "/path/customers.csv",
+    header=True,
+    inferSchema=True
+)
+```
+
+### Parquet
+
+```python
+df = spark.read.parquet(
+    "/path/customers"
+)
+```
+
+---
+
+# 16. Write Data
+
+| Requirement   | PySpark                               |
+| ------------- | ------------------------------------- |
+| Write CSV     | `df.write.csv(path)`                  |
+| Write Parquet | `df.write.parquet(path)`              |
+| Write Delta   | `df.write.format("delta").save(path)` |
+| Write table   | `df.write.saveAsTable("table")`       |
+| Overwrite     | `.mode("overwrite")`                  |
+| Append        | `.mode("append")`                     |
+
+### Delta example
+
+```python
+df.write \
+  .format("delta") \
+  .mode("overwrite") \
+  .save("/data/silver/customers")
+```
+
+---
+
+# 17. Temporary Views
+
+### SQL
+
+```sql
+CREATE VIEW customer_view AS
+SELECT *
+FROM customers;
+```
+
+### PySpark
+
+```python
+df.createOrReplaceTempView(
+    "customer_view"
+)
+```
+
+Then execute SQL:
+
+```python
+spark.sql("""
+    SELECT *
+    FROM customer_view
+    WHERE region = 'UK'
+""")
+```
+
+> This is very useful when you're a SQL developer moving into PySpark. You can combine **DataFrame API + SQL** in the same notebook.
+
+---
+
+# 18. SQL Inside PySpark
+
+You don't have to abandon SQL.
+
+```python
+df.createOrReplaceTempView("sales")
+
+result = spark.sql("""
+    SELECT
+        region,
+        SUM(amount) AS total_sales
+    FROM sales
+    GROUP BY region
+""")
+```
+
+This is an excellent transition strategy:
+
+```text
+SQL knowledge
+     ↓
+Spark SQL
+     ↓
+PySpark DataFrame API
+     ↓
+Advanced PySpark
+```
+
+---
+
+# 19. Explode Arrays
+
+Very common when processing JSON.
+
+### Example data
+
+```text
+customer_id | products
+------------|-------------------
+101         | [P1, P2, P3]
+```
+
+### PySpark
+
+```python
+df = df.withColumn(
+    "product",
+    F.explode("products")
+)
+```
+
+Result:
+
+```text
+customer_id | product
+------------|--------
+101         | P1
+101         | P2
+101         | P3
+```
+
+---
+
+# 20. JSON / Nested Data
+
+### Get nested field
+
+```python
+df.select(
+    F.col("customer.address.city")
+)
+```
+
+### Explode nested array
+
+```python
+df.withColumn(
+    "item",
+    F.explode("orders")
+)
+```
+
+Then:
+
+```python
+df.select(
+    "customer_id",
+    "item.product_id",
+    "item.amount"
+)
+```
+
+---
+
+# 21. DataFrame Inspection
+
+| Requirement        | PySpark                |
+| ------------------ | ---------------------- |
+| Show data          | `df.show()`            |
+| Show 20 rows       | `df.show(20)`          |
+| Schema             | `df.printSchema()`     |
+| Columns            | `df.columns`           |
+| Number of rows     | `df.count()`           |
+| Number of columns  | `len(df.columns)`      |
+| Summary statistics | `df.describe().show()` |
+| First row          | `df.first()`           |
+| Sample rows        | `df.take(5)`           |
+
+### Very useful
+
+```python
+df.printSchema()
+
+df.show(10, truncate=False)
+```
+
+---
+
+# 22. Repartition vs Coalesce
+
+| Requirement                  | PySpark                         |
+| ---------------------------- | ------------------------------- |
+| Increase/decrease partitions | `df.repartition(10)`            |
+| Repartition by column        | `df.repartition("customer_id")` |
+| Reduce partitions            | `df.coalesce(5)`                |
+
+### Example
+
+```python
+df = df.repartition(
+    10,
+    "customer_id"
+)
+```
+
+> `repartition()` causes a shuffle.
+> `coalesce()` is generally useful when reducing partitions without a full shuffle.
+
+---
+
+# 23. Cache vs Persist
+
+| SQL Concept            | PySpark          |
+| ---------------------- | ---------------- |
+| No direct equivalent   | `df.cache()`     |
+| Persist in memory/disk | `df.persist()`   |
+| Remove cache           | `df.unpersist()` |
+
+### Example
+
+```python
+df.cache()
+
+df.count()
+
+# Reuse df several times
+
+df.unpersist()
+```
+
+> Cache only when the DataFrame is reused and recomputation would be expensive.
+
+---
+
+# 24. Lazy Evaluation
+
+One of the biggest differences from traditional SQL execution.
+
+### Transformations
+
+These don't immediately execute the computation:
+
+```python
+df.filter(...)
+df.select(...)
+df.withColumn(...)
+df.groupBy(...)
+df.join(...)
+```
+
+### Actions
+
+These trigger execution:
+
+```python
+df.show()
+df.count()
+df.collect()
+df.write...
+```
+
+Think:
+
+```text
+Transformation
+      ↓
+Transformation
+      ↓
+Transformation
+      ↓
+      ACTION
+      ↓
+Spark executes the plan
+```
+
+---
+
+# 25. Common Transformations vs Actions
+
+| Transformations | Actions     |
+| --------------- | ----------- |
+| `select()`      | `show()`    |
+| `filter()`      | `count()`   |
+| `where()`       | `collect()` |
+| `withColumn()`  | `first()`   |
+| `groupBy()`     | `take()`    |
+| `join()`        | `write()`   |
+| `orderBy()`     | `save()`    |
+| `drop()`        | `foreach()` |
+
+---
+
+# 26. SQL → PySpark Complete Example
+
+### SQL
+
+```sql
+SELECT
+    region,
+    COUNT(*) AS total_orders,
+    SUM(quantity * unit_price) AS total_sales,
+    AVG(quantity * unit_price) AS avg_order_value
+FROM orders
+WHERE order_date >= DATEADD(DAY, -30, GETDATE())
+GROUP BY region
+HAVING SUM(quantity * unit_price) > 10000
+ORDER BY total_sales DESC;
+```
+
+### PySpark
+
+```python
+from pyspark.sql import functions as F
+
+result = (
+    orders
+    .filter(
+        F.col("order_date") >=
+        F.date_sub(F.current_date(), 30)
+    )
+    .groupBy("region")
+    .agg(
+        F.count("*").alias("total_orders"),
+        F.sum(
+            F.col("quantity") *
+            F.col("unit_price")
+        ).alias("total_sales"),
+        F.avg(
+            F.col("quantity") *
+            F.col("unit_price")
+        ).alias("avg_order_value")
+    )
+    .filter(
+        F.col("total_sales") > 10000
+    )
+    .orderBy(
+        F.col("total_sales").desc()
+    )
+)
+```
+
+---
+
+# 27. SQL → PySpark Quick Reference
+
+| SQL              | PySpark                                          |
+| ---------------- | ------------------------------------------------ |
+| `SELECT`         | `select()`                                       |
+| `FROM`           | DataFrame variable                               |
+| `WHERE`          | `filter()` / `where()`                           |
+| `GROUP BY`       | `groupBy()`                                      |
+| `HAVING`         | `filter()` after `groupBy().agg()`               |
+| `ORDER BY`       | `orderBy()` / `sort()`                           |
+| `TOP`            | `limit()`                                        |
+| `DISTINCT`       | `distinct()`                                     |
+| `JOIN`           | `join()`                                         |
+| `UNION ALL`      | `union()` / `unionByName()`                      |
+| `CASE WHEN`      | `when()` / `otherwise()`                         |
+| `AS`             | `alias()`                                        |
+| `IS NULL`        | `isNull()`                                       |
+| `IS NOT NULL`    | `isNotNull()`                                    |
+| `COALESCE`       | `coalesce()`                                     |
+| `COUNT`          | `count()`                                        |
+| `COUNT DISTINCT` | `countDistinct()`                                |
+| `SUM`            | `sum()`                                          |
+| `AVG`            | `avg()`                                          |
+| `MIN`            | `min()`                                          |
+| `MAX`            | `max()`                                          |
+| `ROW_NUMBER()`   | `row_number().over()`                            |
+| `RANK()`         | `rank().over()`                                  |
+| `SUM() OVER()`   | `sum().over()`                                   |
+| `CTE`            | `createOrReplaceTempView()` / chained DataFrames |
+| `CAST`           | `cast()`                                         |
+| `CONCAT`         | `concat()` / `concat_ws()`                       |
+| `GETDATE()`      | `current_timestamp()`                            |
+| `CURRENT_DATE`   | `current_date()`                                 |
+| `DATEDIFF`       | `datediff()`                                     |
+| `DATEADD`        | `date_add()` / `date_sub()`                      |
+
+---
+
+# 28. PySpark Cheat Sheet — Must Know
+
+If you're preparing for **DP-700 / Data Engineering interviews**, prioritize these:
+
+| Priority | PySpark Concept                | Why                          |
+| -------: | ------------------------------ | ---------------------------- |
+|      ⭐ 1 | `select()`                     | Basic transformation         |
+|      ⭐ 2 | `filter()` / `where()`         | Data filtering               |
+|      ⭐ 3 | `withColumn()`                 | Feature engineering          |
+|      ⭐ 4 | `groupBy().agg()`              | Aggregation                  |
+|      ⭐ 5 | `join()`                       | Combining datasets           |
+|      ⭐ 6 | Window functions               | Ranking/history calculations |
+|      ⭐ 7 | Read/write Delta               | Lakehouse processing         |
+|      ⭐ 8 | Partitioning                   | Performance                  |
+|      ⭐ 9 | Cache / persist                | Performance                  |
+|     ⭐ 10 | Lazy evaluation                | Spark fundamentals           |
+|     ⭐ 11 | `repartition()` / `coalesce()` | Partition management         |
+|     ⭐ 12 | `explode()`                    | JSON/nested data             |
+|     ⭐ 13 | Spark SQL                      | SQL + Spark integration      |
+|     ⭐ 14 | Structured Streaming           | Real-time processing         |
+
+---
+
+## The PySpark Mental Model
+
+As a SQL developer, remember:
+
+```text
+SQL                         PySpark
+
+TABLE                  →    DataFrame
+SELECT                 →    select()
+WHERE                  →    filter()
+GROUP BY               →    groupBy()
+HAVING                 →    filter() after aggregation
+JOIN                   →    join()
+ORDER BY               →    orderBy()
+CASE WHEN              →    when().otherwise()
+WINDOW FUNCTION        →    Window + over()
+INSERT/CREATE TABLE    →    write()
+SQL execution          →    Spark execution plan
+```
+
+### The most common PySpark pattern
+
+```python
+result = (
+    df
+    .filter(...)
+    .withColumn(...)
+    .select(...)
+    .groupBy(...)
+    .agg(...)
+    .join(...)
+    .orderBy(...)
+)
+```
+
+**Think of PySpark as SQL expressed as a chain of DataFrame transformations.**
